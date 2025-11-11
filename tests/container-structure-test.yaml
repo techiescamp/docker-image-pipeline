@@ -1,0 +1,11 @@
+
+schemaVersion: "2.0.0"
+fileExistenceTests:
+  - name: "Index file present"
+    path: "/app/index.html"
+    shouldExist: true
+
+metadataTest:
+  user: "10001"
+  exposedPorts: ["8080"]
+  workdir: "/app"

@@ -1,0 +1,44 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-and-structure-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    # Dockerfile lint
+    - name: Hadolint
+      uses: hadolint/hadolint-action@v3.1.0
+      with:
+        dockerfile: Dockerfile
+
+    # Build locally to run container-structure-test (no push)
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build image (no push)
+      uses: docker/build-push-action@v6
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        load: true
+        tags: local/test:pr
+
+    - name: Install container-structure-test
+      run: |
+        curl -L https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64 \
+          -o cst && chmod +x cst && sudo mv cst /usr/local/bin/container-structure-test
+
+    - name: Run container-structure-test
+      run: |
+        container-structure-test test \
+          --image local/test:pr \
+          --config tests/container-structure-test.yaml
