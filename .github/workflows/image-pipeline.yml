@@ -9,8 +9,8 @@ on:
 env:
   ORG: your-dockerhub-org
   APP: your-app
-  STAGE_REPO: docker.io/your-dockerhub-org/your-app-stage
-  PROD_REPO: docker.io/your-dockerhub-org/your-app-prod
+  STAGE_REPO: docker.io/devopscube/web-app-stage
+  PROD_REPO: docker.io/devopscube/web-app-prod
 
 jobs:
   build_scan_sbom_sign_stage:
