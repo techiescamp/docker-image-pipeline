@@ -9,8 +9,8 @@ on:
 env:
   ORG: your-dockerhub-org
   APP: your-app
-  STAGE_REPO: docker.io/${{ env.ORG }}/${{ env.APP }}-stage
-  PROD_REPO: docker.io/${{ env.ORG }}/${{ env.APP }}-prod
+  STAGE_REPO: docker.io/your-dockerhub-org/your-app-stage
+  PROD_REPO: docker.io/your-dockerhub-org/your-app-prod
 
 jobs:
   build_scan_sbom_sign_stage:
@@ -106,14 +106,14 @@ jobs:
           "${{ env.STAGE_REPO }}@${{ steps.digest.outputs.digest }}"
 
     - name: Save digest for next job
+      run: |
+        echo -n "${{ steps.digest.outputs.digest }}" > digest.txt
+
+    - name: Upload digest artifact
       uses: actions/upload-artifact@v4
       with:
         name: built-digest
         path: digest.txt
-      env:
-        D: ${{ steps.digest.outputs.digest }}
-      run: |
-        echo -n "$D" > digest.txt
 
   stage_approval_and_promote_to_prod:
     needs: [ build_scan_sbom_sign_stage ]
@@ -137,15 +137,16 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+    - name: Install crane
+      run: |
+        curl -L https://github.com/google/go-containerregistry/releases/latest/download/crane_$(uname -s)_$(uname -m).tar.gz \
+          | tar -xz crane
+        sudo mv crane /usr/local/bin/
+
     # Retag the exact digest to a stage tag (optional)
     - name: Tag stage by digest
       run: |
         crane copy "${{ env.STAGE_REPO }}@${{ steps.d.outputs.digest }}" "${{ env.STAGE_REPO }}:stage-$(echo $GITHUB_SHA | cut -c1-7)"
-      shell: bash
-    - name: Install crane
-      if: failure()
-      run: |
-        echo "If crane missing, add install step above. Otherwise ignore."
       shell: bash
 
   prod_approval_and_release:
