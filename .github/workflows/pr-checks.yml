@@ -1,44 +1,39 @@
 name: PR Checks
 
 on:
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  ORG: your-dockerhub-org
+  APP: your-app
 
 jobs:
-  lint-and-structure-test:
+  lint_build_scan:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    # Dockerfile lint
-    - name: Hadolint
-      uses: hadolint/hadolint-action@v3.1.0
-      with:
-        dockerfile: Dockerfile
+      - name: Dockerfile lint
+        uses: hadolint/hadolint-action@v3
+        with:
+          dockerfile: ./Dockerfile
 
-    # Build locally to run container-structure-test (no push)
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
+      - name: Build image (no push)
+        run: |
+          docker build -t ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }} .
 
-    - name: Set up Buildx
-      uses: docker/setup-buildx-action@v3
+      - name: Vulnerability scan (Trivy)
+        uses: aquasecurity/trivy-action@v0.28.0
+        with:
+          image-ref: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
 
-    - name: Build image (no push)
-      uses: docker/build-push-action@v6
-      with:
-        context: .
-        file: ./Dockerfile
-        push: false
-        load: true
-        tags: local/test:pr
-
-    - name: Install container-structure-test
-      run: |
-        curl -L https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64 \
-          -o cst && chmod +x cst && sudo mv cst /usr/local/bin/container-structure-test
-
-    - name: Run container-structure-test
-      run: |
-        container-structure-test test \
-          --image local/test:pr \
-          --config tests/container-structure-test.yaml
+      - name: Container-structure-test
+        uses: GoogleContainerTools/container-structure-test-action@v1
+        with:
+          image: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
+          config: ./container-structure-test.yaml

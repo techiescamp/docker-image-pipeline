@@ -1,11 +1,13 @@
-
 schemaVersion: "2.0.0"
+
 fileExistenceTests:
   - name: "Index file present"
-    path: "/app/index.html"
+    path: "/usr/share/nginx/html/index.html"
     shouldExist: true
+    uid: 1001
+    gid: 1001
 
 metadataTest:
-  user: "10001"
+  user: "nginxuser"
   exposedPorts: ["8080"]
-  workdir: "/app"
+  workdir: "/usr/share/nginx/html"
