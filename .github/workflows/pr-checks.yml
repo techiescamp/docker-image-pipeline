@@ -36,13 +36,14 @@ jobs:
 
       - name: Install container-structure-test
         run: |
-          curl -LO https://github.com/GoogleContainerTools/container-structure-test/releases/latest/download/container-structure-test-linux-amd64 && \
-          chmod +x container-structure-test-linux-amd64 && \
-          mkdir -p $HOME/bin && \
+          curl -LO https://github.com/GoogleContainerTools/container-structure-test/releases/latest/download/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          mkdir -p $HOME/bin
           mv container-structure-test-linux-amd64 $HOME/bin/container-structure-test
-
+          echo "$HOME/bin" >> $GITHUB_PATH
       - name: Run container-structure-test
         run: |
           container-structure-test test \
-            --image local/test:pr \
+            --image ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }} \
             --config tests/container-structure-test.yaml
+
