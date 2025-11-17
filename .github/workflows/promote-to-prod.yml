@@ -1,19 +1,10 @@
-name: Promote by Digest
+name: Promote to Prod
 
 on:
   workflow_dispatch:
     inputs:
-      sourceRepo:
-        description: "Source repo (e.g., docker.io/ORG/APP-stage)"
-        required: true
       sourceDigest:
         description: "Digest to promote (e.g., sha256:abcd...)"
-        required: true
-      targetRepo:
-        description: "Target repo (e.g., docker.io/ORG/APP-prod)"
-        required: true
-      targetTag:
-        description: "Tag to apply (e.g., stable)"
         required: true
 
 env:
@@ -23,7 +14,6 @@ env:
 jobs:
   promote:
     runs-on: ubuntu-latest
-    environment: prod
     steps:
     - name: Login to Docker Hub
       uses: docker/login-action@v3
@@ -37,10 +27,13 @@ jobs:
           | tar -xz crane
         sudo mv crane /usr/local/bin/
 
-    - name: Promote
+    - name: Promote to prod repo
       run: |
-        crane copy "${{ github.event.inputs.sourceRepo }}@${{ github.event.inputs.sourceDigest }}" \
-                   "${{ github.event.inputs.targetRepo }}:${{ github.event.inputs.targetTag }}"
+        crane copy "${{ env.STAGE_REPO }}@${{ github.event.inputs.sourceDigest }}" \
+          "${{ env.PROD_REPO }}:1.0.${{ github.run_number }}"
+        
+        crane copy "${{ env.STAGE_REPO }}@${{ github.event.inputs.sourceDigest }}" \
+          "${{ env.PROD_REPO }}:latest"
 
     - name: Install Cosign
       uses: sigstore/cosign-installer@v4.0.0
@@ -50,12 +43,10 @@ jobs:
         COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
         COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
       run: |
-        echo "Signing ${{ env.PROD_REPO }}:stable"
         cosign sign --yes \
           --key env://COSIGN_PRIVATE_KEY \
-          "${{ env.PROD_REPO }}:stable"
+          "${{ env.PROD_REPO }}:latest"
 
-        echo "Signing ${{ env.PROD_REPO }}:sha-..."
         cosign sign --yes \
           --key env://COSIGN_PRIVATE_KEY \
-          "${{ env.PROD_REPO }}:sha-$(echo $GITHUB_SHA | cut -c1-7)"
+          "${{ env.PROD_REPO }}:1.0.${{ github.run_number }}"
