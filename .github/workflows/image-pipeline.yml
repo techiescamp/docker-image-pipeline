@@ -49,5 +49,6 @@ jobs:
     - name: Read digest
       id: d
       run: |
-        echo "${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+        echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
+
 
