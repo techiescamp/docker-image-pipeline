@@ -1,14 +1,17 @@
+FROM nginx:alpine
 
-FROM alpine:3.20
+RUN addgroup -g 1001 -S nginxgroup && adduser -u 1001 -S -G nginxgroup nginxuser \
+    && mkdir -p /var/run/nginx /var/cache/nginx/client_temp /var/cache/nginx/proxy_temp /var/cache/nginx/fastcgi_temp /var/cache/nginx/scgi_temp /var/cache/nginx/uwsgi_temp \
+    && chown -R nginxuser:nginxgroup /run /var/cache/nginx /var/run/nginx /var/log/nginx /etc/nginx /usr/share/nginx/html \
+    && sed -i 's/listen       80;/listen       8080;/g' /etc/nginx/conf.d/default.conf \
+    && sed -i 's/\/var\/run\/nginx.pid/\/var\/run\/nginx\/nginx.pid/g' /etc/nginx/nginx.conf
 
-# Create non-root user
-RUN addgroup -S app && adduser -S -G app -u 10001 app
+COPY ./web/ /usr/share/nginx/html/
 
-WORKDIR /app
-COPY web/ /app
+RUN chown -R 1001:1001 /usr/share/nginx/html/
+
+USER nginxuser
 
 EXPOSE 8080
-USER 10001
 
-# BusyBox httpd is included in Alpine base
-CMD ["sh","-c","busybox httpd -f -p 0.0.0.0:8080 -h /app"]
+CMD ["nginx", "-g", "daemon off;"]

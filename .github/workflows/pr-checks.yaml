@@ -1,0 +1,52 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+env:
+  ORG: devopscube
+  APP: test
+
+jobs:
+  lint_build_scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dockerfile lint
+        uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: ./Dockerfile
+          failure-threshold: error
+
+      - name: Build image (no push)
+        run: |
+          docker build -t ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }} .
+
+      - name: Vulnerability scan (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Install container-structure-test
+        run: |
+          curl -LO https://github.com/GoogleContainerTools/container-structure-test/releases/latest/download/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          mkdir -p $HOME/bin
+          mv container-structure-test-linux-amd64 $HOME/bin/container-structure-test
+          echo "$HOME/bin" >> $GITHUB_PATH
+      - name: Run container-structure-test
+        run: |
+          container-structure-test test \
+            --image ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }} \
+            --config tests/container-structure-test.yaml
+
