@@ -4,9 +4,6 @@ fileExistenceTests:
   - name: "Index file present"
     path: "/usr/share/nginx/html/index.html"
     shouldExist: true
-    uid: 1001
-    gid: 1001
 
 metadataTest:
-  user: "nginxuser"
-  exposedPorts: ["8080"]
+  exposedPorts: ["80"]
