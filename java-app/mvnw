@@ -1,0 +1,53 @@
+#!/bin/sh
+set -e
+
+# Resolve script dir
+PRG="$0"
+while [ -h "$PRG" ]; do
+  ls=$(ls -ld "$PRG"); link=$(expr "$ls" : '.*-> \(.*\)$')
+  if expr "$link" : '/.*' >/dev/null; then PRG="$link"; else PRG=$(dirname "$PRG")"/$link"; fi
+done
+BASEDIR=$(cd "$(dirname "$PRG")" >/dev/null 2>&1 && pwd -P)
+APP_HOME="$BASEDIR"
+
+WRAPPER_DIR="$APP_HOME/.mvn/wrapper"
+WRAPPER_JAR="$WRAPPER_DIR/maven-wrapper.jar"
+WRAPPER_PROPS="$WRAPPER_DIR/maven-wrapper.properties"
+
+# Pick Java
+if [ -n "$JAVA_HOME" ]; then JAVA_CMD="$JAVA_HOME/bin/java"; else JAVA_CMD="java"; fi
+
+# Find project base dir (folder that has pom.xml)
+if [ -z "$MAVEN_PROJECTBASEDIR" ]; then
+  CUR="$APP_HOME"
+  while [ "$CUR" != "/" ]; do
+    if [ -f "$CUR/pom.xml" ]; then MAVEN_PROJECTBASEDIR="$CUR"; break; fi
+    CUR=$(cd "$CUR/.." && pwd -P)
+  done
+  [ -n "$MAVEN_PROJECTBASEDIR" ] || MAVEN_PROJECTBASEDIR="$APP_HOME"
+fi
+
+# Download wrapper JAR if missing
+if [ ! -f "$WRAPPER_JAR" ]; then
+  mkdir -p "$WRAPPER_DIR"
+  if [ ! -f "$WRAPPER_PROPS" ]; then
+    echo "Missing $WRAPPER_PROPS" >&2; exit 1
+  fi
+  WRAPPER_URL=$(grep -E '^wrapperUrl=' "$WRAPPER_PROPS" | cut -d'=' -f2-)
+  if [ -z "$WRAPPER_URL" ]; then
+    echo "wrapperUrl not found in $WRAPPER_PROPS" >&2; exit 1
+  fi
+  echo "Downloading Maven Wrapper JAR from $WRAPPER_URL ..."
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL -o "$WRAPPER_JAR" "$WRAPPER_URL"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O "$WRAPPER_JAR" "$WRAPPER_URL"
+  else
+    echo "Need curl or wget to download maven-wrapper.jar" >&2; exit 1
+  fi
+fi
+
+exec "$JAVA_CMD" \
+  -Dmaven.wrapper.log.level=INFO \
+  "-Dmaven.multiModuleProjectDirectory=$MAVEN_PROJECTBASEDIR" \
+  -cp "$WRAPPER_JAR" org.apache.maven.wrapper.MavenWrapperMain "$@"

@@ -26,6 +26,20 @@ jobs:
         run: |
           docker build -t ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }} .
 
+      - name: Generate SBOM (Trivy)
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          scan-type: image
+          image-ref: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
+          format: cyclonedx
+          output: sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-pr-${{ github.sha }}
+          path: sbom.cdx.json
+
       - name: Vulnerability scan (Trivy)
         uses: aquasecurity/trivy-action@0.28.0
         with:

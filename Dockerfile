@@ -1,9 +1,19 @@
-FROM nginx:alpine
+FROM maven:3.9-eclipse-temurin-21 AS builder
 
-RUN apk update && apk add --no-cache curl
+WORKDIR /build
 
-COPY ./web/ /usr/share/nginx/html/
+COPY java-app/pom.xml .
+RUN mvn -B -e dependency:go-offline
 
-EXPOSE 80
+COPY java-app/src ./src
+RUN mvn -B clean package -DskipTests
 
-CMD ["nginx", "-g", "daemon off;"]
+FROM gcr.io/distroless/java21-debian12
+
+WORKDIR /app
+
+COPY --from=builder /build/target/*.jar app.jar
+
+EXPOSE 8080
+
+CMD ["app.jar"]
