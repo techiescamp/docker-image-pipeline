@@ -30,6 +30,16 @@ jobs:
           type=sha,format=short
           type=raw,value=latest
 
+    - name: Run Trivy vulnerability scan
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ env.STAGE_REPO }}@${{ github.event.inputs.sourceDigest }}'
+        format: 'table'
+        exit-code: '1'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
     - name: Install crane
       run: |
         go install github.com/google/go-containerregistry/cmd/crane@latest

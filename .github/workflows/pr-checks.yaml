@@ -22,10 +22,23 @@ jobs:
           dockerfile: ./Dockerfile
           failure-threshold: error
 
-      - name: Build image (no push)
-        run: |
-          docker build -t ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }} .
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image with cache (no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,scope=java
+          
       - name: Generate SBOM (Trivy)
         uses: aquasecurity/trivy-action@0.28.0
         with:
