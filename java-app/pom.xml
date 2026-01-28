@@ -6,7 +6,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.4</version>
+    <version>3.3.11</version>
     <relativePath/>
   </parent>
 
@@ -18,7 +18,7 @@
 
   <properties>
     <java.version>21</java.version>
-    <tomcat.version>10.1.35</tomcat.version>
+    <tomcat.version>10.1.45</tomcat.version>
   </properties>
 
   <dependencies>
