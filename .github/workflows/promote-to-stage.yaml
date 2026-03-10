@@ -1,4 +1,4 @@
-name: Promote to Prod
+name: Promote to Stage
 
 on:
   workflow_dispatch:
@@ -8,8 +8,8 @@ on:
         required: true
 
 env:
+  DEV_REPO: docker.io/devopscube/web-app-dev
   STAGE_REPO: docker.io/devopscube/web-app-stage
-  PROD_REPO: docker.io/devopscube/web-app-prod
 
 jobs:
   promote:
@@ -20,6 +20,15 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Docker metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.STAGE_REPO }}
+        tags: |
+          type=sha,format=short
+          type=raw,value=latest
 
     - name: Setup Trivy
       uses: aquasecurity/setup-trivy@v0.2.0
@@ -44,22 +53,20 @@ jobs:
         go install github.com/google/go-containerregistry/cmd/crane@latest
         echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
 
-    - name: Promote to prod repo
+    - name: Promote to stage repo
       run: |
         digest="${{ github.event.inputs.sourceDigest }}"
+
         echo "${{ steps.meta.outputs.tags }}" | while read -r TAG; do
-          crane copy "${{ env.STAGE_REPO }}@$digest" "$TAG"
+          echo "Promoting to: $TAG"
+          crane copy "${{ env.DEV_REPO }}@$digest" "$TAG"
         done
 
-    - name: Install Cosign
-      uses: sigstore/cosign-installer@v4.0.0
-
-    - name: Sign prod image
-      env:
-        COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_PRIVATE_KEY }}
-        COSIGN_PASSWORD: ${{ secrets.COSIGN_PASSWORD }}
+    - name: Get and print stage image digest
       run: |
-        PROD_DIGEST=$(crane digest $(echo "${{ steps.meta.outputs.tags }}" | head -1))
-        cosign sign --yes \
-          --key env://COSIGN_PRIVATE_KEY \
-          "${{ env.PROD_REPO }}@${PROD_DIGEST}"
+        digest=$(crane digest ${{ env.STAGE_REPO }}:latest)
+        echo "=========================================="
+        echo " Promoted to stage registry"
+        echo " Use this digest for promote-to-prod:"
+        echo " $digest"
+        echo "=========================================="

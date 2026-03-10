@@ -20,7 +20,7 @@ jobs:
         uses: hadolint/hadolint-action@v3.1.0
         with:
           dockerfile: ./Dockerfile
-          failure-threshold: error
+          failure-threshold: warning
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -28,7 +28,7 @@ jobs:
       - name: Set up Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build image with cache (no push)
+      - name: Build image (no push)
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -36,22 +36,12 @@ jobs:
           push: false
           load: true
           tags: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,scope=java
-          
-      - name: Generate SBOM (Trivy)
-        uses: aquasecurity/trivy-action@0.28.0
-        with:
-          scan-type: image
-          image-ref: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
-          format: cyclonedx
-          output: sbom.cdx.json
 
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+      - name: Setup Trivy
+        uses: aquasecurity/setup-trivy@v0.2.0
         with:
-          name: sbom-pr-${{ github.sha }}
-          path: sbom.cdx.json
+          cache: true
+          version: v0.69.3
 
       - name: Vulnerability scan (Trivy)
         uses: aquasecurity/trivy-action@0.33.1
@@ -63,6 +53,23 @@ jobs:
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+          skip-setup-trivy: true
+
+      - name: Generate SBOM (Trivy)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          scan-type: image
+          image-ref: ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }}
+          format: cyclonedx
+          output: sbom.cdx.json
+          exit-code: '0'
+          skip-setup-trivy: true
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-pr-${{ github.sha }}
+          path: sbom.cdx.json
 
       - name: Install container-structure-test
         run: |
@@ -71,9 +78,9 @@ jobs:
           mkdir -p $HOME/bin
           mv container-structure-test-linux-amd64 $HOME/bin/container-structure-test
           echo "$HOME/bin" >> $GITHUB_PATH
+
       - name: Run container-structure-test
         run: |
           container-structure-test test \
             --image ${{ env.ORG }}/${{ env.APP }}:pr-${{ github.sha }} \
             --config tests/container-structure-test.yaml
-
